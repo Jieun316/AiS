@@ -1,0 +1,7 @@
+*.jpg
+__pycachy__/
+*.ckpt
+result/
+*.ipynb
+images/
+dtd/
