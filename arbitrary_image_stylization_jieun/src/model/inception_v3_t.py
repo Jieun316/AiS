@@ -39,7 +39,7 @@ class InceptionV3Encoder(nn.Module):
     def forward(self, x):
         # Extract features
         x = self.features(x)
-        print("Shape after Mixed_6e:", x.shape)  # Debugging statement
+        # print("Shape after Mixed_6e:", x.shape)  # Debugging statement
         
         # Compute mean across each activation channel of Mixed_6e layer
         # if len(x.shape) == 4:

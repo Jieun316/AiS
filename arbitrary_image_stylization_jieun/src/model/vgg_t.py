@@ -154,7 +154,7 @@ class VGGencoder(nn.Module):
         self.dropout1 = nn.Dropout(0.5)
         self.conv7 = Conv2d(4096, 4096, kernel_size=1)
         self.dropout2 = nn.Dropout(0.5)
-        self.conv8 = Conv2d(4096, 1000, kernel_size=1, activation_fn=nn.ReLU()) # 여기도 None에서 ReLU로 통일해주었음
+        self.conv8 = Conv2d(4096, 1000, kernel_size=1, activation_fn=None) # 여기도 None에서 ReLU로 통일해주었음
     
     def make_layer(self, repeat, in_channel, out_channel, kernel_size):
         layer = []
@@ -169,7 +169,7 @@ class VGGencoder(nn.Module):
         x *= 255.0
         # print("vgg 인풋 쉐입: ", x.shape)
         
-        _, height, width = x.shape
+        _, _, height, width = x.shape
         cons = torch.Tensor([123.68, 116.779, 103.939]).unsqueeze(1).unsqueeze(1)
         cons = cons.to(device)
         # print("unsqueeze하면 ", cons.shape)

@@ -30,12 +30,13 @@ class TotalLoss(nn.Module):
             print(f"content_end_points[name]: {content_end_points[name].shape}")
 
             print(f"styleized_end_points[name]: {stylized_end_points[name].shape}")
-            loss = torch.mean((content_end_points[name] - stylized_end_points[name]) ** 2)
+            
+            loss = torch.mean((content_end_points[name].clone() - stylized_end_points[name].clone()) ** 2)
             weighted_loss = weights * loss
-            print(f"c loss : {weighted_loss}")
+            # print(f"c loss : {weighted_loss}")
             content_loss_dict['content_loss/' + name] = loss.item()
             content_loss_dict['weighted_content_loss/' + name] = weighted_loss.item()
-            total_content_loss += weighted_loss
+            total_content_loss = total_content_loss + weighted_loss
         content_loss_dict['total_content_loss'] = total_content_loss.item()
 
         return total_content_loss, content_loss_dict
@@ -47,12 +48,14 @@ class TotalLoss(nn.Module):
             G_stylized = self.get_matrix(stylized_end_points[name])
             G_style = self.get_matrix(style_end_points[name])
             # print("G_stylized, G_style: ", G_stylized, G_style)
+            G_stylized = G_stylized.clone()
+            G_style = G_style.clone()
             loss = torch.mean((G_stylized - G_style) ** 2)
             weighted_loss = weights * loss
-            print(f"s loss : {weighted_loss}")
+            # print(f"s loss : {weighted_loss}")
             style_loss_dict['style_loss/' + name] = loss.item()
             style_loss_dict['weighted_style_loss/' + name] = weighted_loss.item()
-            total_style_loss += weighted_loss
+            total_style_loss = total_style_loss + weighted_loss
         style_loss_dict['total_style_loss'] = total_style_loss.item()
 
         return total_style_loss, style_loss_dict
@@ -60,33 +63,34 @@ class TotalLoss(nn.Module):
     def get_matrix(self, feature):
         feature = feature.detach().cpu()
         # print("gram matrix 인풋: ", feature.shape)
-        batch_size, height, width = feature.size()
+        batch_size, channel, height, width = feature.size()
         # batch_size, height, width = batch_size.detach().cpu(), height.detach().cpu(), width.detach().cpu()
         denominator = float(height * width)
+        denominator = torch.full((batch_size, channel, channel), denominator, dtype=torch.float32)
         # denominator_tensor = torch.tensor(denominator).to(feature.device)
         # denominator = torch.full((batch_size, batch_size), denominator, dtype=torch.float32)
-        feature_map = feature.view((batch_size, height * width, 1)) #.cpu().numpy()
+        feature_map = feature.reshape((batch_size, channel, height * width)) #.cpu().numpy()
         # torch.cuda.empty_cache()
         # print(f"feature_map shape: {feature_map.shape}")
-        matrix = torch.bmm(feature_map, feature_map.transpose(1, 2))
+        matrix = torch.bmm(feature_map, feature_map.permute(0,2,1))
         # matrix = torch.matmul(feature_map.squeeze(-1), feature_map.squeeze(-1).transpose(0, 1))
         # print(f"matrix shape: {matrix.shape}")
         # print(f"denom이랑 matrix : {denominator.shape},{feature_map.shape}, {matrix.shape}")
-        matrix /= denominator
+        matrix = matrix / denominator
         
         return matrix.to(device)
 
     def forward(self, content, style, stylized):
         print(len(content), len(style), len(stylized))
-        content = content[0]
-        style = style[0]
-        stylized = stylized[0]
+        # content = content[0]
+        # style = style[0]
+        # stylized = stylized[0]
         # print(f"loss에서: {content.shape}, {style.shape}, {stylized.shape}")
-        content_end_points = self.encoder(content)
-        style_end_points = self.encoder(style)
-        stylized_end_points = self.encoder(stylized)
+        content_end_points = self.encoder(content.clone())
+        style_end_points = self.encoder(style.clone())
+        stylized_end_points = self.encoder(stylized.clone())
         total_content_loss, _ = self.content_loss(content_end_points, stylized_end_points, self.content_weights)
         total_style_loss, _ = self.style_loss(style_end_points, stylized_end_points, self.style_weights)
         loss = total_content_loss + total_style_loss
-        print(f"Total loss: {loss}")
+        # print(f"Total loss: {loss}")
         return loss

@@ -55,8 +55,11 @@ def main(args):
         os.makedirs(args.output)
     
     step = 0
+    import time
     with tqdm(total=args.max_step + 1) as pbar:
         for step in range(args.max_step + 1):
+            print("### Step: ", step)
+            start_time = time.time()
             for content, style in dataloader:
                 content, style = content.to(device), style.to(device)
                 
@@ -67,9 +70,11 @@ def main(args):
                 
                 if step % args.save_checkpoint_step == 0 and step != 0:
                     torch.save(network.state_dict(), f'{args.output}/model-{int(step/args.save_checkpoint_step)}.pth')
-                
+                    print(f'{step} checkpoint 저장!')
                 pbar.set_description(f'loss: {loss.item():.4f}')
                 pbar.update(1)
+            end_time = time.time()
+            print(f"### Training time for 1 step: {start_time - end_time}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Arbitrary image stylization train')

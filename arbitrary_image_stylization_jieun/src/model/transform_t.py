@@ -24,7 +24,7 @@ class Conv2d(nn.Module):
 
     def forward(self, x):
         # print(f"transform Conv에서: {x[0].shape}")
-        print(f"Conv에서: {len(x)}")
+        # print(f"Conv에서: {len(x)}")
         x, normalizer_fn, params, order = x
         # x = self.pad(x)
         x = self.conv(x)
@@ -40,12 +40,12 @@ class Residual(nn.Module):
  
     def __init__(self, channels, kernel_size):
         super(Residual, self).__init__()
-        self.conv1 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=nn.ReLU())
+        self.conv1 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1)
         # self.conv2 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=nn.Linear(channels, channels))
-        self.conv2 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=nn.ReLU()) # 여기가 원래 None인데 그게 문젠가?
+        self.conv2 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=None) # 여기가 원래 None인데 그게 문젠가?
 
     def forward(self, x):
-        print(f"Residual에서: {len(x)}") # =4 ; line96 self.residual((x, normalizer_fn, style_params, 0))
+        # print(f"Residual에서: {len(x)}") # =4 ; line96 self.residual((x, normalizer_fn, style_params, 0))
         # x, normalizer_fn, params, order = x
         # print(f"x는 {x.shape}")
         h_1 = self.conv1(x)
@@ -54,8 +54,8 @@ class Residual(nn.Module):
         # print(f"h_2: {h_2.shape}")
         out1, _, _, _ = x
         out2, normalizer_fn, params, order = h_2
-        print(f"residual 인풋: {x[0].shape}")
-        print(f"residual 아웃풋: {out1.shape}, {out2.shape}")
+        # print(f"residual 인풋: {x[0].shape}")
+        # print(f"residual 아웃풋: {out1.shape}, {out2.shape}")
         return (out1 + out2, normalizer_fn, params, order)
 
 class Upsampling(nn.Module):
@@ -93,18 +93,18 @@ class Transform(nn.Module):
             Residual(int(alpha * 128), 3)
             )
         self.expand = nn.Sequential(
-            Upsampling(2, (64, 64), 3, int(alpha * 128), int(alpha * 64)),
-            Upsampling(2, (32, 32), 3, int(alpha * 64), int(alpha * 32)),
-            Upsampling(1, (128, 128), 9, int(alpha * 32), 3))#, activation_fn=nn.Sigmoid())
+            Upsampling(2, (32,32), 3, int(alpha * 128), int(alpha * 64)),
+            Upsampling(2, (64,64), 3, int(alpha * 64), int(alpha * 32)),
+            Upsampling(1, (128, 128), 9, int(alpha * 32), 3, activation_fn=nn.Sigmoid()))
             # Conv2d(int(alpha * 32), int(alpha * 256), kernel_size=9, stride=1, activation_fn=nn.Sigmoid())
         # 여기 마지막 레이어 out_channel 뭐해야되지
 
     def forward(self, x): # ais의 (content, self.norm, style_params)
         x, normalizer_fn, style_params = x 
-        print(f"content겠지? {x.shape}") # (8,3,256,256)  
+        # print(f"content겠지? {x.shape}") # (8,3,256,256)  
         out = self.contract((x, None, None, 0))
         x, _, _, _ = out        
-        print(f"contract 후 x: {x.shape}") ### (8, 128, 61, 61) -> 얘가 Residual의 x로 들어가서 8개를 패킹해야돼서 오류남
+        # print(f"contract 후 x: {x.shape}") ### (8, 128, 61, 61) -> 얘가 Residual의 x로 들어가서 8개를 패킹해야돼서 오류남
         x = self.residual((x, normalizer_fn, style_params, 0)) # x는 content가 contract 층을 지나고 나서
         out = self.expand(x)
         x, _, _, _ = out
@@ -135,7 +135,7 @@ class ConditionalStyleNorm(nn.Module):
         #gamma = style_parameters[order*2+1]
         #beta = style_parameters[order*2]
         if gamma is not None:
-            inv *= gamma
+            inv = inv * gamma
         #print(f"x shape: {x.shape}, inv shape: {inv.shape}")
         data1 = inv.to(x.dtype)
         data2 = x * data1
