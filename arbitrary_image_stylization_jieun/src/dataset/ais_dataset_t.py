@@ -55,7 +55,7 @@ class AisDataset(Dataset):
 
 def create_dataset(args):
     dataset = AisDataset(args.content_path, args.style_path, size=args.size)
-
+    print("c path, s path: ", args.content_path, args.style_path)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=bool(args.shuffle), num_workers=args.num_workers, drop_last=True)
 
     return dataloader

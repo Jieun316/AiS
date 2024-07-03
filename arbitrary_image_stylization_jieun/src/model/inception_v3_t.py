@@ -3,6 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import inception_v3
 
+"""
+논문에 나온 구조대로 Mixed_6e 레이어까지 사용한 인셉션 네트워크
+style_predict_t.py에서 style predict할 때 사용하는 인코더로 사용됨 -> style이 x로 들어오고, 레이어들을 거쳐서 인코딩됨
+"""
 class InceptionV3Encoder(nn.Module):
     def __init__(self, in_channel=3):
         super(InceptionV3Encoder, self).__init__()

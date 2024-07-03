@@ -3,9 +3,15 @@
 import torch
 from torch import nn, ops, Tensor
 
+"""
+인풋을 transform 하는 코드들
+Conv2d, Residual, Upsampling 클래스를 각각 만들어 준 다음 사용함
+ais_t.py에서 norm, transform 불러올 때 사용함
+activation_fn은 항상 nn.ReLU()로 통일함
+"""
 class Conv2d(nn.Module):
   
-    def __init__(self, in_channels: int, out_channels: int, kernel_size=3, stride=1, activation_fn=nn.ReLU(),
+    def __init__(self, in_channels: int, out_channels: int, kernel_size=3, stride=1, activation_fn=nn.ReLU(inplace=False),
                  normalizer_fn=None, **kwargs):
         super(Conv2d, self).__init__()
         padding = kernel_size // 2
@@ -14,7 +20,7 @@ class Conv2d(nn.Module):
                               padding=padding, padding_mode='reflect', **kwargs)
         self.bn = normalizer_fn
         self.activation_fn = activation_fn
-        # self.pad = nn.ReflectionPad2d(padding)
+        # self.pad = nn.ReflectionPad2d(padding) 
 
     def forward(self, x):
         # print(f"transform Conv에서: {x[0].shape}")
@@ -27,7 +33,7 @@ class Conv2d(nn.Module):
         if self.bn:
             x = self.bn(x)
         if self.activation_fn:
-            x = self.activation_fn(x)
+            x = self.activation_fn(x) ## 현재 여기서 에러남
         return (x, normalizer_fn, params, order + 1)
 
 class Residual(nn.Module):
@@ -36,7 +42,7 @@ class Residual(nn.Module):
         super(Residual, self).__init__()
         self.conv1 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=nn.ReLU())
         # self.conv2 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=nn.Linear(channels, channels))
-        self.conv2 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=None)
+        self.conv2 = Conv2d(channels, channels, kernel_size=kernel_size, stride=1, activation_fn=nn.ReLU()) # 여기가 원래 None인데 그게 문젠가?
 
     def forward(self, x):
         print(f"Residual에서: {len(x)}") # =4 ; line96 self.residual((x, normalizer_fn, style_params, 0))
@@ -63,7 +69,7 @@ class Upsampling(nn.Module):
     def forward(self, input_):
         x, normalizer_fn, params, order = input_
         _, _, height, width = x.shape
-        x = nn.functional.interpolate(x, size=[height * self.stride, width * self.stride], mode='nearest', align_corners=None)
+        x = nn.functional.interpolate(x, size=[height * self.stride, width * self.stride], mode='nearest') #, align_corners=None)
         x = self.conv((x, normalizer_fn, params, order))
         return x
 
@@ -89,9 +95,9 @@ class Transform(nn.Module):
         self.expand = nn.Sequential(
             Upsampling(2, (64, 64), 3, int(alpha * 128), int(alpha * 64)),
             Upsampling(2, (32, 32), 3, int(alpha * 64), int(alpha * 32)),
-            Upsampling(1, (128, 128), 9, int(alpha * 32), 3, activation_fn=nn.Sigmoid())
+            Upsampling(1, (128, 128), 9, int(alpha * 32), 3))#, activation_fn=nn.Sigmoid())
             # Conv2d(int(alpha * 32), int(alpha * 256), kernel_size=9, stride=1, activation_fn=nn.Sigmoid())
-        ) # 여기 마지막 레이어 out_channel 뭐해야되지
+        # 여기 마지막 레이어 out_channel 뭐해야되지
 
     def forward(self, x): # ais의 (content, self.norm, style_params)
         x, normalizer_fn, style_params = x 

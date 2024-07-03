@@ -32,5 +32,4 @@ class Ais(nn.Module):
         content = torch.tensor(content)
         style_params, _ = self.style_predict(style)
         stylized_images = self.transform((content, self.norm, style_params))
-        print("AiS에서: {}".format(stylized_images)) # 얘가 (8,3,256,256)이 되어야할텐데 지금 (2,8,3,256,256)
         return stylized_images

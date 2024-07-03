@@ -3,6 +3,10 @@ import torch.nn as nn
 from torchvision import models
 from .inception_v3_t import InceptionV3Encoder
 
+"""
+style predict 네트워크
+인셉션 V3를 인코더로 씀
+"""
 def style_normalization_activations(pre_name='transformer', post_name='StyleNorm', alpha=1.0):
     scope_names = [
         'residual/residual1/conv1', 'residual/residual1/conv2',
@@ -37,11 +41,11 @@ class StylePrediction(nn.Module):
         style_params = {}
         for i in range(len(self.activation_depths)):
             beta = self.beta[i](x)
-            print(f"style prediction에서: {beta.shape}")
+            # print(f"style prediction에서: {beta.shape}")
             beta = torch.squeeze(beta,(2,3))
             style_params[self.activation_names[i] + '/beta'] = beta
             gamma = self.gamma[i](x)
-            print(f"style prediction에서: {gamma.shape}")
+            # print(f"style prediction에서: {gamma.shape}")
             gamma = torch.squeeze(gamma,(2,3))
             style_params[self.activation_names[i] + '/gamma'] = gamma
         return style_params, x

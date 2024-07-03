@@ -18,7 +18,7 @@ DEFAULT_STYLE_WEIGHTS = {
     'vgg_16/conv3': 0.5e-3,
     'vgg_16/conv4': 0.5e-3
 }
-
+torch.autograd.set_detect_anomaly(True)
 class WithLossCell(nn.Module):
     def __init__(self, network, loss_fn):
         super(WithLossCell, self).__init__()
@@ -26,7 +26,7 @@ class WithLossCell(nn.Module):
         self.loss_fn = loss_fn
 
     def forward(self, content, style):
-        print(f"loss cell에서: {content.shape}, {style.shape}")
+        # print(f"loss cell에서: {content.shape}, {style.shape}")
         stylized = self.network(content, style)
         print(f"stylized: {stylized.shape}")
         loss = self.loss_fn(content, style, stylized)
@@ -36,18 +36,19 @@ def main(args):
     device = torch.device(f'cuda:{args.device_id}' if torch.cuda.is_available() else 'cpu')
     
     dataloader = create_dataset(args)
-    print(f"train에서: {args.content_weights}, {args.style_weights}")
-    network = Ais(style_prediction_bottleneck=args.style_prediction_bottleneck).to(device)
-    loss = TotalLoss(3, args.content_weights, args.style_weights).to(device)  # Corrected argument passing
-    vgg16 = models.vgg16(pretrained=True)# Load pretrained models
-    inception3 = models.inception_v3(pretrained=True)
+    # print(f"train에서: {args.content_weights}, {args.style_weights}")
+    network = Ais(style_prediction_bottleneck=args.style_prediction_bottleneck).to(device) # style prediction network
+    loss_fn = TotalLoss(3, args.content_weights, args.style_weights).to(device)  # loss 계산
+    # vgg16 = models.vgg16(pretrained=True)# Load pretrained models
+    # inception3 = models.inception_v3(pretrained=True) # 이것도 이상해서 지워주었음. InceptionV3Encoder에서 이미 pretrained를 불러와 주는데 이걸 왜 이렇게 했지
 
     network.style_predict.encoder = InceptionV3Encoder()
-    network.style_predict.encoder.load_state_dict(inception3.state_dict(), strict=False)
-    loss.load_state_dict(vgg16.state_dict(), strict=False)
+    # network.style_predict.encoder.load_state_dict(inception3.state_dict(), strict=False) # 이걸 해줄 필요가 없나..? pre trained 모델을 어떻게 쓰는지 잘 모르겠음
+    # loss.load_state_dict(vgg16.state_dict(), strict=False) # TotalLoss는 forward에서 content, style, stylized를 받는데 이렇게 하면 안될것 같음
+    
     # network.style_predict.encoder.load_state_dict(models.inception_v3(pretrained=True).state_dict(), strict=False)
     
-    net_with_loss = WithLossCell(network, loss).to(device)
+    net_with_loss = WithLossCell(network, loss_fn).to(device)
     optimizer = optim.Adam(network.parameters(), lr=args.learning_rate)
     
     if not os.path.exists(args.output):
@@ -74,11 +75,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Arbitrary image stylization train')
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--max_step', type=int, default=3, help='Number of total steps.')
-    parser.add_argument('--content_path', type=str, default='../../imagenet_mini/imagenet-mini/train/', help='Path of content image.')
-    parser.add_argument('--style_path', type=str, default='../../dtd/images/', help='Path of style image.')
+    parser.add_argument('--content_path', type=str, default='../../../imagenet_mini/imagenet-mini/train/', help='Path of content image.')
+    parser.add_argument('--style_path', type=str, default='../../../dtd/images/', help='Path of style image.')
     parser.add_argument('--shuffle', type=int, default=1, help='1 means True and 0 mean False')
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--size', type=int, default=256, help='Image size for both content and style.')
+    parser.add_argument('--size', type=int, default=128, help='Image size for both content and style.')
     parser.add_argument('--content_weights', type=dict, default=DEFAULT_CONTENT_WEIGHTS, help='Weights for content loss.')
     parser.add_argument('--style_weights', type=dict, default=DEFAULT_STYLE_WEIGHTS, help='Weights for style loss.')
     parser.add_argument('--style_prediction_bottleneck', type=int, default=100)
