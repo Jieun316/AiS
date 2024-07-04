@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 from .style_predict_t import StylePrediction, style_normalization_activations
 from .transform_t import Transform, ConditionalStyleNorm
+"""
+style prediction network, transform, norm 네트워크 만들어놓은걸 갖다 써서 stylized 이미지를 생성
+즉, stylization 코드
+"""
 # from .conditional_style_norm import ConditionalStyleNorm
 
 # class Ais(nn.Module):

@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 
+"""
+사용하지 않음
+"""
 class BasicConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding='same', activation_fn=nn.ReLU(), **kwargs):
         super(BasicConv2d, self).__init__()

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import inception_v3
+from torchvision.models import inception_v3, Inception_V3_Weights
 
 """
 논문에 나온 구조대로 Mixed_6e 레이어까지 사용한 인셉션 네트워크
@@ -9,9 +9,9 @@ style_predict_t.py에서 style predict할 때 사용하는 인코더로 사용�
 """
 class InceptionV3Encoder(nn.Module):
     def __init__(self, in_channel=3):
-        super(InceptionV3Encoder, self).__init__()
+        super().__init__()
         # Load the pre-trained InceptionV3 model
-        inception = inception_v3(pretrained=True)
+        inception = inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
         
         # Extract layers up to Mixed_6e layer
         self.features = nn.Sequential(
