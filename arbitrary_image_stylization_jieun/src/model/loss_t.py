@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 # from model.vgg_t import VGG
 from torchvision import models
-from .vgg_t import VGGencoder
+from .vgg_t import VGGEncoder
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 """
@@ -16,7 +16,7 @@ bmm 연산은 바꾸면 달라져서 그냥 이미지 사이즈를 줄여주었�
 class TotalLoss(nn.Module):
     def __init__(self, in_channel, content_weights, style_weights):
         super(TotalLoss, self).__init__()
-        self.encoder = VGGencoder(in_channel)
+        self.encoder = VGGEncoder()
         self.content_weights = content_weights
         self.style_weights = style_weights
 
@@ -28,6 +28,7 @@ class TotalLoss(nn.Module):
             name = str(name)
             loss = torch.mean((content_end_points[name].clone() - stylized_end_points[name].clone()) ** 2)
             weighted_loss = weights * loss
+            # print(f"c loss: {weighted_loss}")
             content_loss_dict['content_loss/' + name] = loss.item()
             content_loss_dict['weighted_content_loss/' + name] = weighted_loss.item()
             total_content_loss = total_content_loss + weighted_loss
@@ -45,6 +46,7 @@ class TotalLoss(nn.Module):
             G_style = G_style.clone()
             loss = torch.mean((G_stylized - G_style) ** 2)
             weighted_loss = weights * loss
+            # print(f"s loss: {weighted_loss}")
             style_loss_dict['style_loss/' + name] = loss.item()
             style_loss_dict['weighted_style_loss/' + name] = weighted_loss.item()
             total_style_loss = total_style_loss + weighted_loss
@@ -65,9 +67,9 @@ class TotalLoss(nn.Module):
         return matrix.to(device)
 
     def forward(self, content, style, stylized):
-        content_end_points = self.encoder(content.clone())
-        style_end_points = self.encoder(style.clone())
-        stylized_end_points = self.encoder(stylized.clone())
+        content_end_points = self.encoder(content.clone().detach())
+        style_end_points = self.encoder(style.clone().detach())
+        stylized_end_points = self.encoder(stylized.clone().detach())
         total_content_loss, _ = self.content_loss(content_end_points, stylized_end_points, self.content_weights)
         total_style_loss, _ = self.style_loss(style_end_points, stylized_end_points, self.style_weights)
         loss = total_content_loss + total_style_loss

@@ -1,4 +1,80 @@
 # """ Implementation of VGG-16 network for deriving content and style loss. """
+
+import torch
+import torch.nn as nn
+from torchvision import models
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+import torch.nn as nn
+from torchvision import models
+
+class VGGEncoder(nn.Module):
+    def __init__(self):
+        super(VGGEncoder, self).__init__()
+        vgg16 = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+    
+        # Splitting the VGG16 model into separate blocks
+        blocks_indices = [3, 4, 8, 9, 15, 16, 22, 23, 29, 30]
+        features = list(vgg16.features)
+        
+        # Creating sequential blocks up to each index
+        self.blocks = nn.ModuleList()  # Ensure this is initialized as a ModuleList
+        start = 0
+        for i, end in enumerate(blocks_indices, 1):
+            block = nn.Sequential(*features[start:end+1])
+            self.blocks.append(block)  # Append each block to the ModuleList
+            start = end + 1
+
+        
+        # Defining additional layers
+        self.conv6 = nn.Sequential(
+            nn.Conv2d(512, 4096, kernel_size=7, padding=3),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
+
+        self.conv7 = nn.Sequential(
+            nn.Conv2d(4096, 4096, kernel_size=1),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
+
+        self.conv8 = nn.Conv2d(4096, 1000, kernel_size=1)
+
+        self.blocks.extend([self.conv6, self.conv7, self.conv8])
+        
+    def forward(self, x):
+        end_points = {}
+        
+        # Applying each block and additional layers
+        # print("Input Size:", x.size())  # Initial input size
+        for i, block in enumerate(self.blocks, 1):
+            x = block(x)
+            # print(f"Output of block{i}:", x.size())
+            end_points[f'vgg_16/conv{i}'] = x
+
+        # x = self.conv6(x)
+        # end_points['vgg_16/conv6'] = x
+
+        # x = self.conv7(x)
+        # end_points['vgg_16/conv7'] = x
+
+        # x = self.conv8(x)
+        # end_points['vgg_16/conv8'] = x
+
+        return end_points
+
+
+
+
+
+
+
+
+
+
+
+
 # from torch import nn, Tensor
 
 # class VGG(nn.Module):
@@ -85,10 +161,7 @@
 #             x = self.activation_fn(x)
 #         return x
 
-import torch
-import torch.nn as nn
-from torchvision import models
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
 
 # class VGGencoder(nn.Module):
 #     def __init__(self, pretrained=True):
@@ -137,92 +210,9 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 #         end_points['vgg_16/conv8'] = x
 #         return end_points
 
-class VGGencoder(nn.Module):
-    def __init__(self, in_channel=3):
-        super(VGGencoder, self).__init__()
-        self.conv1 = self.make_layer(2, in_channel, 64, 3)
-        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv2 = self.make_layer(2, 64, 128, 3)
-        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv3 = self.make_layer(3, 128, 256, 3)
-        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv4 = self.make_layer(3, 256, 512, 3)
-        self.pool4 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv5 = self.make_layer(3, 512, 512, 3)
-        self.pool5 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv6 = Conv2d(512, 4096, kernel_size=7)
-        self.dropout1 = nn.Dropout(0.5)
-        self.conv7 = Conv2d(4096, 4096, kernel_size=1)
-        self.dropout2 = nn.Dropout(0.5)
-        self.conv8 = Conv2d(4096, 1000, kernel_size=1, activation_fn=None) # 여기도 None에서 ReLU로 통일해주었음
-    
-    def make_layer(self, repeat, in_channel, out_channel, kernel_size):
-        layer = []
-        for _ in range(repeat):
-            layer.append(Conv2d(in_channel, out_channel, kernel_size=kernel_size))
-            
-            in_channel = out_channel
-        return nn.Sequential(*layer)
-
-    def forward(self, x):
-        x = x.to(device)
-        x *= 255.0
-        # print("vgg 인풋 쉐입: ", x.shape)
-        
-        _, _, height, width = x.shape
-        cons = torch.Tensor([123.68, 116.779, 103.939]).unsqueeze(1).unsqueeze(1)
-        cons = cons.to(device)
-        # print("unsqueeze하면 ", cons.shape)
-        cons = cons.repeat(1, height, width)
-        # print("뭐 이상한 전처리하면 ", cons.shape)
-        x -= cons
-        end_points = {}
-        x = self.conv1(x)
-        end_points['vgg_16/conv1'] = x
-        x = self.pool1(x)
-        x = self.conv2(x)
-        end_points['vgg_16/conv2'] = x
-        x = self.pool2(x)
-        x = self.conv3(x)
-        end_points['vgg_16/conv3'] = x
-        x = self.pool3(x)
-        x = self.conv4(x)
-        end_points['vgg_16/conv4'] = x
-        x = self.pool4(x)
-        x = self.conv5(x)
-        end_points['vgg_16/conv5'] = x
-        x = self.pool5(x)
-        x = self.conv6(x)
-        end_points['vgg_16/conv6'] = x
-        x = self.dropout1(x)
-        x = self.conv7(x)
-        end_points['vgg_16/conv7'] = x
-        x = self.dropout2(x)
-        x = self.conv8(x)
-        end_points['vgg_16/fc8'] = x
-        # print("VGG에서", end_points.shape)
-        return end_points
-    
-class Conv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, 
-                 activation_fn=nn.ReLU(), padding='same', **kwargs):
-        super(Conv2d, self).__init__()
-        if padding == 'same':
-            padding= kernel_size//2
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
-                              padding=padding, bias=True, **kwargs)
-        self.activation_fn = activation_fn
-    def forward(self,x):
-        x=self.conv(x)
-        if self.activation_fn:
-            x = self.activation_fn(x)
-        return x 
-
 # class VGGencoder(nn.Module):
 #     def __init__(self, in_channel=3):
 #         super(VGGencoder, self).__init__()
-#         vgg = models.vgg16(pretrained=True)
-#         self.features = nn.Sequential(*list(vgg.features.children())[:9])  # 23번째 레이어까지 사용
 #         self.conv1 = self.make_layer(2, in_channel, 64, 3)
 #         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
 #         self.conv2 = self.make_layer(2, 64, 128, 3)
@@ -233,20 +223,20 @@ class Conv2d(nn.Module):
 #         self.pool4 = nn.AvgPool2d(kernel_size=2, stride=2)
 #         self.conv5 = self.make_layer(3, 512, 512, 3)
 #         self.pool5 = nn.AvgPool2d(kernel_size=2, stride=2)
-#         self.conv6 = nn.Conv2d(512, 4096, kernel_size=7, padding=7//2)
+#         self.conv6 = Conv2d(512, 4096, kernel_size=7)
 #         self.dropout1 = nn.Dropout(0.5)
-#         self.conv7 = nn.Conv2d(4096, 4096, kernel_size=1, padding=1//2)
+#         self.conv7 = Conv2d(4096, 4096, kernel_size=1)
 #         self.dropout2 = nn.Dropout(0.5)
-#         self.conv8 = nn.Conv2d(4096, 1000, kernel_size=1, activation_fn=None, padding=1//2) # 여기도 None에서 ReLU로 통일해주었음
+#         self.conv8 = Conv2d(4096, 1000, kernel_size=1, activation_fn=None) # 여기도 None에서 ReLU로 통일해주었음
     
 #     def make_layer(self, repeat, in_channel, out_channel, kernel_size):
 #         layer = []
 #         for _ in range(repeat):
-#             layer.append(nn.Conv2d(in_channel, out_channel, kernel_size=kernel_size, padding=kernel_size//2))
+#             layer.append(Conv2d(in_channel, out_channel, kernel_size=kernel_size))
             
 #             in_channel = out_channel
 #         return nn.Sequential(*layer)
-    
+
 #     def forward(self, x):
 #         x = x.to(device)
 #         x *= 255.0
@@ -283,5 +273,65 @@ class Conv2d(nn.Module):
 #         x = self.dropout2(x)
 #         x = self.conv8(x)
 #         end_points['vgg_16/fc8'] = x
-#         print("VGG에서", end_points.shape)
+#         # print("VGG에서", end_points.shape)
 #         return end_points
+    
+# class Conv2d(nn.Module):
+#     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, 
+#                  activation_fn=nn.ReLU(), padding='same', **kwargs):
+#         super(Conv2d, self).__init__()
+#         if padding == 'same':
+#             padding= kernel_size//2
+#         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
+#                               padding=padding, bias=True, **kwargs)
+#         self.activation_fn = activation_fn
+#     def forward(self,x):
+#         x=self.conv(x)
+#         if self.activation_fn:
+#             x = self.activation_fn(x)
+#         return x 
+
+# # class VGGencoder(nn.Module):
+# #     def __init__(self, in_channel=3):
+# #         super(VGGencoder, self).__init__()
+# #         original_vgg16 = models.vgg16(weights = models.VGG16_Weights.IMAGENET1K_V1)
+        
+# #         # We use the features component of VGG16, which contains the conv layers
+# #         self.features = original_vgg16.features[:30]  # This includes up to the last set of convolutional layers
+
+# #         # Adding extra layers according to your specified architecture
+# #         self.conv6 = nn.Conv2d(512, 4096, kernel_size=7, padding=3)  # Adjust padding according to your kernel size
+# #         self.dropout1 = nn.Dropout(0.5)
+# #         self.conv7 = nn.Conv2d(4096, 4096, kernel_size=1)
+# #         self.dropout2 = nn.Dropout(0.5)
+# #         self.conv8 = nn.Conv2d(4096, 1000, kernel_size=1)  # No activation function here
+
+# #         # Activation function
+# #         self.relu = nn.ReLU()
+
+# #     def forward(self, x):
+# #         # x = x.to(device)
+# #         x *= 255.0
+# #         cons = torch.Tensor([123.68, 116.779, 103.939]).unsqueeze(1).unsqueeze(1)
+# #         cons = cons.repeat(1, x.size(2), x.size(3))
+# #         x -= cons
+
+# #         end_points = {}
+        
+# #         # Process through layers, storing outputs in the dictionary
+# #         for idx, layer in enumerate(self.features):
+# #             x = layer(x)
+# #             end_points[f'vgg_16/conv{idx+1}'] = x
+        
+# #         x = self.conv6(x)
+# #         end_points['vgg_16/conv6'] = x
+# #         x = self.dropout1(x)
+
+# #         x = self.conv7(x)
+# #         end_points['vgg_16/conv7'] = x
+# #         x = self.dropout2(x)
+
+# #         x = self.conv8(x)
+# #         end_points['vgg_16/fc8'] = x
+
+# #         return end_points
